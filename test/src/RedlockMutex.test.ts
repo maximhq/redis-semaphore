@@ -6,7 +6,7 @@ import LostLockError from '../../src/errors/LostLockError'
 import RedlockMutex from '../../src/RedlockMutex'
 import { TimeoutOptions } from '../../src/types'
 import { delay } from '../../src/utils/index'
-import { allClients, client1, client2, client3 } from '../redisClient'
+import { allClients, client1, client2, client3, cluster } from '../redisClient'
 import { downRedisServer, upRedisServer } from '../shell'
 import {
   catchUnhandledRejection,
@@ -42,6 +42,18 @@ describe('RedlockMutex', () => {
   })
   it('should acquire and release lock', async () => {
     const mutex = new RedlockMutex(allClients, 'key')
+    expect(mutex.isAcquired).to.be.false
+
+    await mutex.acquire()
+    expect(mutex.isAcquired).to.be.true
+    await expectGetAll('mutex:key', mutex.identifier)
+
+    await mutex.release()
+    expect(mutex.isAcquired).to.be.false
+    await expectGetAll('mutex:key', null)
+  })
+  it('should acquire and release lock using cluster', async () => {
+    const mutex = new RedlockMutex(cluster.nodes('master'), 'key')
     expect(mutex.isAcquired).to.be.false
 
     await mutex.acquire()
